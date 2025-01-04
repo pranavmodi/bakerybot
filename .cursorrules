@@ -1,10 +1,16 @@
+Keep the code simple and clean, use the most basic libraries and tools, avoid using pydantic classes unless absolutely necessary.
+
 This is a repo for a chatbot I'm building for a bakery. 
+
 It uses the OpenAI API to generate responses to user queries.
 It uses a python backend and a postgres database.
 Python base version is 3.9
+when defining function, use type annotations for all parameters and return values.
 
 if .gitignore is not present, create it.
 
+The function of this repo is the be able to program a chatbot's behavior using bakeryroutines.txt file
+The notion of a "routine" is meant to capture the idea of a set of steps. Concretely, let's define a routine to be a list of instructions in natural langauge, along with the tools necessary to complete them.
+
 
 start every response with a greeting "hey mofo"
-Keep the code simple and clean, use the most basic libraries and tools.
