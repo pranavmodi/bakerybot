@@ -1,7 +1,6 @@
-from app.services.chatbot import ChatbotService
+import requests
 
 def chat_with_bot():
-    chatbot = ChatbotService()
     print("Welcome to the Bakery Chatbot! Type 'exit' to end the conversation.")
     
     while True:
@@ -10,8 +9,16 @@ def chat_with_bot():
             print("Goodbye!")
             break
         
-        response = chatbot.generate_response(user_input)
-        print(f"Bot: {response}")
+        try:
+            response = requests.post(
+                'http://localhost:8000/chat',
+                json={'message': user_input}
+            )
+            response.raise_for_status()  # Raise an exception for bad status codes
+            bot_response = response.json()['response']
+            print(f"Bot: {bot_response}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error: Could not connect to server. {str(e)}")
 
 if __name__ == "__main__":
     chat_with_bot() 
