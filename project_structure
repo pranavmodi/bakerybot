@@ -1,0 +1,16 @@
+bakery-chatbot/
+├── app/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── database/
+│   │   ├── __init__.py
+│   │   └── models.py
+│   ├── services/
+│   │   ├── __init__.py
+│   │   └── chatbot.py
+│   └── config/
+│       ├── __init__.py
+│       └── settings.py
+├── requirements.txt
+├── .env
+└── README.md 

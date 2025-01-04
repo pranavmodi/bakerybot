@@ -1,0 +1,10 @@
+This is a repo for a chatbot I'm building for a bakery. 
+It uses the OpenAI API to generate responses to user queries.
+It uses a python backend and a postgres database.
+Python base version is 3.9
+
+if .gitignore is not present, create it.
+
+
+start every response with a greeting "hey mofo"
+Keep the code simple and clean, use the most basic libraries and tools.
