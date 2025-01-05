@@ -73,7 +73,7 @@ def run_full_turn(system_message: str, messages: list[dict], tools: list = None)
         while True:
             # Get completion from OpenAI
             response = client.chat.completions.create(
-                model="gpt-4-0125-preview",
+                model="gpt-3.5-turbo-0125",
                 messages=[{"role": "system", "content": system_message}] + messages,
                 tools=tool_schemas,
             )
@@ -170,7 +170,6 @@ async def chat(request: Request) -> dict:
         )
 
         tools = [get_cake_inventory]
-        tool_schemas = [function_to_schema(tool) for tool in tools]
         
         conversation_history.append({
             "role": "user", 
