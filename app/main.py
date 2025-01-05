@@ -1,18 +1,11 @@
 from fastapi import FastAPI, HTTPException, Request
 from openai import OpenAI
-from app.utils.tools import get_cake_inventory
+from app.utils.tools import bakery_agent, Agent
 from app.utils.function_schemas import function_to_schema
-from app.utils.agents import BakeryAgent
-
 from dotenv import load_dotenv
 import os
 import json
-import logging
 from typing import Any
-
-# Configure logging at the top of the file
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
 
 # Load environment variables at the start of the application
 load_dotenv()
@@ -21,65 +14,56 @@ app = FastAPI(title="Bakery Chatbot API")
 
 # Initialize OpenAI client and BakeryAgent
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-bakery_agent = BakeryAgent()
 
 # Add at the top of the file, outside any function
 conversation_history: list[dict] = []
+current_agent = bakery_agent  # Initialize with bakery_agent
 
+def print_messages(messages: list[dict]) -> None:
+    """Print messages in a readable format for debugging."""
+    print("\n=== Messages being sent to OpenAI ===")
+    for msg in messages:
+        print(f"Role: {msg['role']}")
+        print(f"Content: {msg['content']}")
+        if 'tool_calls' in msg:
+            print(f"Tool calls: {msg['tool_calls']}")
+        print("---")
+    print("===================================\n")
 
+def execute_tool_call(tool_call, tools, agent_name):
+    name = tool_call.function.name
+    args = json.loads(tool_call.function.arguments)
 
+    print(f"{agent_name}:", f"{name}({args})")
 
+    return tools[name](**args)  # call corresponding function with provided arguments
 
-def execute_tool_call(tool_call, tools_map):
-    try:
-        name = tool_call.function.name
-        args = json.loads(tool_call.function.arguments)
-
-        logger.debug(f"Executing tool call: {name} with args: {args}")
-        logger.debug(f"Available tools: {list(tools_map.keys())}")
-
-        if name not in tools_map:
-            raise ValueError(f"Tool {name} not found in tools_map")
-
-        # call corresponding function with provided arguments
-        result = tools_map[name](**args)
-        logger.debug(f"Tool call result (raw): {result}")
-        
-        # Ensure the result is JSON serializable
-        json_result = json.dumps(result)
-        logger.debug(f"Tool call result (serialized): {json_result}")
-        
-        return json_result
-    except Exception as e:
-        logger.error(f"Error in execute_tool_call: {str(e)}", exc_info=True)
-        raise
-
-
-
-def run_full_turn(agent: BakeryAgent, messages: list[dict]) -> dict:
+def run_full_turn(agent: Agent, messages: list[dict]) -> tuple[dict, Agent]:
     """
-    Run a complete conversation turn with the OpenAI API, handling tool calls
+    Run a complete conversation turn with the OpenAI API, handling tool calls and agent transfers
     
     Args:
-        agent (BakeryAgent): The bakery agent containing instructions and tools
+        agent (Agent): The current agent containing instructions and tools
         messages (list[dict]): The conversation history
     
     Returns:
-        dict: The assistant's response message
+        tuple[dict, Agent]: The assistant's response message and the current agent (which may have changed)
     """
 
     messages = messages.copy()
+    current_agent = agent
     try:
-        # Convert python functions into tools and create reverse mapping
-        tools = [tool["function"] for tool in agent.tools]
-        tool_schemas = [function_to_schema(tool) for tool in tools]
-        tools_map = {tool.__name__: tool for tool in tools}
+        # Create tool schemas and mapping
+        tool_schemas = [function_to_schema(tool) for tool in current_agent.tools]
+        tools_map = {tool.__name__: tool for tool in current_agent.tools}
 
         while True:
             # Get completion from OpenAI
+            full_messages = [{"role": "system", "content": current_agent.instructions}] + messages
+            print_messages(full_messages)
             response = client.chat.completions.create(
-                model=agent.model,
-                messages=[{"role": "system", "content": agent.instructions}] + messages,
+                model=current_agent.model,
+                messages=full_messages,
                 tools=tool_schemas,
             )
             message = response.choices[0].message
@@ -104,25 +88,32 @@ def run_full_turn(agent: BakeryAgent, messages: list[dict]) -> dict:
             # Add assistant message to history before processing tool calls
             messages.append(assistant_message)
 
-            # If no tool calls, return the message
+            # If no tool calls, return the message and current agent
             if not message.tool_calls:
-                return assistant_message
+                return assistant_message, current_agent
 
             # Handle tool calls
             for tool_call in message.tool_calls:
-                result = execute_tool_call(tool_call, tools_map)
+                result = execute_tool_call(tool_call, tools_map, current_agent.name)
+                
+                # Check if result is an Agent (indicating agent transfer)
+                if isinstance(result, Agent):
+                    current_agent = result
+                    result = f"Transferred to {current_agent.name}. Adopt persona immediately."
+                    # Update tool schemas and mapping for new agent
+                    tool_schemas = [function_to_schema(tool) for tool in current_agent.tools]
+                    tools_map = {tool.__name__: tool for tool in current_agent.tools}
+                
                 tool_message = {
                     "role": "tool",
                     "tool_call_id": tool_call.id,
-                    "content": result
+                    "content": str(result)
                 }
                 messages.append(tool_message)
 
     except Exception as e:
-        logger.error(f"Error in run_full_turn: {str(e)}", exc_info=True)
+        print(f"Error in run_full_turn: {str(e)}")
         raise
-
-
 
 @app.get("/")
 async def root():
@@ -132,6 +123,7 @@ async def root():
 async def chat(request: Request) -> dict:
     try:
         global conversation_history
+        global current_agent
         data = await request.json()
         message = data.get('message', '')
 
@@ -144,6 +136,7 @@ async def chat(request: Request) -> dict:
             
             final_history = conversation_history.copy()
             conversation_history = []
+            current_agent = bakery_agent  # Reset to bakery agent
             
             return {
                 "response": "Goodbye! Conversation history has been cleared.",
@@ -155,8 +148,8 @@ async def chat(request: Request) -> dict:
             "content": message
         })
         
-        assistant_message = run_full_turn(
-            bakery_agent,
+        assistant_message, current_agent = run_full_turn(
+            current_agent,
             conversation_history
         )
         
@@ -164,7 +157,8 @@ async def chat(request: Request) -> dict:
         
         return {
             "response": assistant_message["content"],
-            "conversation_history": conversation_history
+            "conversation_history": conversation_history,
+            "current_agent": current_agent.name
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
