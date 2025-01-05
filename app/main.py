@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from openai import OpenAI
 from app.utils.tools import get_cake_inventory
 from app.utils.function_schemas import function_to_schema
+from app.utils.agents import BakeryAgent
 
 from dotenv import load_dotenv
 import os
@@ -18,11 +19,15 @@ load_dotenv()
 
 app = FastAPI(title="Bakery Chatbot API")
 
-# Initialize OpenAI client
+# Initialize OpenAI client and BakeryAgent
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+bakery_agent = BakeryAgent()
 
 # Add at the top of the file, outside any function
 conversation_history: list[dict] = []
+
+
+
 
 
 def execute_tool_call(tool_call, tools_map):
@@ -51,14 +56,13 @@ def execute_tool_call(tool_call, tools_map):
 
 
 
-def run_full_turn(system_message: str, messages: list[dict], tools: list = None) -> dict:
+def run_full_turn(agent: BakeryAgent, messages: list[dict]) -> dict:
     """
     Run a complete conversation turn with the OpenAI API, handling tool calls
     
     Args:
-        system_message (str): The system message to guide the model
+        agent (BakeryAgent): The bakery agent containing instructions and tools
         messages (list[dict]): The conversation history
-        tools (list, optional): List of tool functions to make available
     
     Returns:
         dict: The assistant's response message
@@ -67,14 +71,15 @@ def run_full_turn(system_message: str, messages: list[dict], tools: list = None)
     messages = messages.copy()
     try:
         # Convert python functions into tools and create reverse mapping
-        tool_schemas = [function_to_schema(tool) for tool in tools] if tools else None
-        tools_map = {tool.__name__: tool for tool in tools} if tools else {}
+        tools = [tool["function"] for tool in agent.tools]
+        tool_schemas = [function_to_schema(tool) for tool in tools]
+        tools_map = {tool.__name__: tool for tool in tools}
 
         while True:
             # Get completion from OpenAI
             response = client.chat.completions.create(
-                model="gpt-3.5-turbo-0125",
-                messages=[{"role": "system", "content": system_message}] + messages,
+                model=agent.model,
+                messages=[{"role": "system", "content": agent.instructions}] + messages,
                 tools=tool_schemas,
             )
             message = response.choices[0].message
@@ -145,41 +150,14 @@ async def chat(request: Request) -> dict:
                 "conversation_history": final_history
             }
 
-        # system_message = """You are a helpful bakery assistant. Provide friendly and 
-        # informative responses about bakery products, ingredients, and services."""
-
-        system_message = (
-            "You are a friendly customer service agent for Chocolate Therapy Bakery. "
-            "Start with: 'Welcome to chocolate therapy, let's cure your cravings with a heavy dose of sweetness'\n"
-            "Follow this routine with customers:\n"
-            "1. Ask if they want immediate pickup or custom cake order\n"
-            "2. For immediate pickup:\n"
-            "   - Inform about available cakes\n"
-            "3. For custom cake orders, collect in a friendly conversation:\n"
-            "   - Occasion\n"
-            "   - Cake size (number of people)\n"
-            "   - Number of tiers\n"
-            "   - Dietary restrictions\n"
-            "   - Filling and frosting preferences\n"
-            "   - Theme or design preferences\n"
-            "   - Color preferences\n"
-            "   - Special message or decorations\n"
-            "   - Customer name\n"
-            "4. Summarize the complete order\n"
-            "5. Get final confirmation from customer\n"
-        )
-
-        tools = [get_cake_inventory]
-        
         conversation_history.append({
             "role": "user", 
             "content": message
         })
         
         assistant_message = run_full_turn(
-            system_message, 
-            conversation_history,
-            tools
+            bakery_agent,
+            conversation_history
         )
         
         conversation_history.append(assistant_message)
