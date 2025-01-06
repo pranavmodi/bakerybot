@@ -89,6 +89,58 @@ def transfer_to_refund_agent() -> Agent:
     """Transfer the conversation to the refund specialist agent."""
     return refund_agent
 
+def get_faq() -> List[Dict[str, str]]:
+    """
+    Get the list of frequently asked questions and their answers from faq.txt.
+    
+    Returns:
+        List[Dict[str, str]]: List of FAQ items with questions and answers
+    """
+    faqs = []
+    try:
+        with open('app/faq.txt', 'r') as file:
+            current_question = None
+            current_answer = None
+            
+            for line in file:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                    
+                if line.startswith('Q:'):
+                    if current_question and current_answer:
+                        faqs.append({
+                            "question": current_question,
+                            "answer": current_answer
+                        })
+                    current_question = line[2:].strip()
+                    current_answer = None
+                elif line.startswith('A:'):
+                    current_answer = line[2:].strip()
+            
+            if current_question and current_answer:
+                faqs.append({
+                    "question": current_question,
+                    "answer": current_answer
+                })
+                
+        return faqs
+    except FileNotFoundError:
+        return [
+            {
+                "question": "What are your opening hours?",
+                "answer": "We are open Monday to Friday from 7 AM to 7 PM, and weekends from 8 AM to 6 PM."
+            },
+            {
+                "question": "Do you offer gluten-free options?",
+                "answer": "Yes, we have a variety of gluten-free breads and pastries available daily."
+            },
+            {
+                "question": "Can I place custom cake orders?",
+                "answer": "Yes, custom cake orders require 48 hours advance notice. Please contact us directly for special requests."
+            }
+        ]
+
 # Define agent instances
 bakery_agent = Agent(
     name="BakeryBot",
@@ -96,13 +148,17 @@ bakery_agent = Agent(
     Start with: 'Welcome to chocolate therapy, let's cure your cravings with a heavy dose of sweetness'
 
     Follow this routine with customers:
-    1. Ask if they want immediate pickup or custom cake order
-    2. For immediate pickup:
+    1. For any general questions:
+       - First check get_faq for standard answers
+       - If no matching FAQ found, provide appropriate information based on context
+       - IMPORTANT: FAQ answers are the final authority on store policy and should never be contradicted
+    2. Ask if they want immediate pickup or custom cake order
+    3. For immediate pickup:
        - Inform about available cakes using get_cake_inventory
        - Process payment and confirm order
-    3. For custom cake orders:
+    4. For custom cake orders:
        - Hand over to custom_order_agent with message: "Transferring you to our custom order specialist"
-    4. If customer mentions refund or cancellation:
+    5. If customer mentions refund or cancellation:
        - Hand over to refund_agent with message: "Let me connect you with our refund specialist"
 
     Additional Guidelines:
@@ -113,7 +169,7 @@ bakery_agent = Agent(
     """,
     model="gpt-4-0125-preview",
     tools=[get_cake_inventory, calculate_custom_cake_price, check_payment_status, 
-           transfer_to_custom_order_agent, transfer_to_refund_agent]
+           transfer_to_custom_order_agent, transfer_to_refund_agent, get_faq]
 )
 
 refund_agent = Agent(
@@ -122,14 +178,18 @@ refund_agent = Agent(
     Start with: "I understand you'd like to discuss a refund. I'm here to help."
 
     Follow this routine:
-    1. Get order ID and reason for refund
-    2. Check if refund is eligible based on:
+    1. For any general questions:
+       - First check get_faq for standard answers
+       - If no matching FAQ found, provide appropriate information based on context
+       - IMPORTANT: FAQ answers are the final authority on store policy and should never be contradicted
+    2. Get order ID and reason for refund
+    3. Check if refund is eligible based on:
        - Time since order
        - Order status
        - Previous refund history
-    3. Process refund if eligible using execute_refund
-    4. If refund is not possible, explain why clearly
-    5. If customer wants to place a new order:
+    4. Process refund if eligible using execute_refund
+    5. If refund is not possible, explain why clearly
+    6. If customer wants to place a new order:
        - Hand over to bakery_agent with message: "Let me connect you with our order specialist"
 
     Guidelines:
@@ -139,7 +199,7 @@ refund_agent = Agent(
     - Custom orders are non-refundable once production begins
     """,
     model="gpt-4-0125-preview",
-    tools=[execute_refund, transfer_to_bakery_agent]
+    tools=[execute_refund, transfer_to_bakery_agent, get_faq]
 )
 
 custom_order_agent = Agent(
@@ -148,7 +208,11 @@ custom_order_agent = Agent(
     Start with: "I'm excited to help create your perfect custom cake!"
 
     Follow this routine for custom orders:
-    1. Collect requirements in a friendly conversation:
+    1. For any general questions:
+       - First check get_faq for standard answers
+       - If no matching FAQ found, provide appropriate information based on context
+       - IMPORTANT: FAQ answers are the final authority on store policy and should never be contradicted
+    2. Collect requirements in a friendly conversation:
        - Occasion
        - Cake size (number of people)
        - Number of tiers
@@ -158,10 +222,10 @@ custom_order_agent = Agent(
        - Color preferences
        - Special message or decorations
        - Customer name
-    2. Calculate price using calculate_custom_cake_price
-    3. Summarize order details
-    4. Get final confirmation
-    5. Process payment using check_payment_status
+    3. Calculate price using calculate_custom_cake_price
+    4. Summarize order details
+    5. Get final confirmation
+    6. Process payment using check_payment_status
     
     If at any point:
     - Customer mentions refund: Hand over to refund_agent
@@ -175,5 +239,5 @@ custom_order_agent = Agent(
     - Payment required upfront
     """,
     model="gpt-4-0125-preview",
-    tools=[calculate_custom_cake_price, check_payment_status, transfer_to_bakery_agent, transfer_to_refund_agent]
+    tools=[calculate_custom_cake_price, check_payment_status, transfer_to_bakery_agent, transfer_to_refund_agent, get_faq]
 )
