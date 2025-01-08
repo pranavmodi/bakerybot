@@ -1,6 +1,10 @@
 # Bakery Chatbot
 
-A simple chatbot for a bakery that uses OpenAI's API to handle customer queries.
+Agents for a bakery that uses OpenAI's API to handle customer queries.
+
+- Handles customer queries about the bakery's products and services
+- Accomplishes order taking for immediate pickup, custom order, payment and refunds
+- Uses multiple agents to handle different types of workflows
 
 ## Setup
 
