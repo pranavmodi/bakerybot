@@ -4,7 +4,7 @@ import random
 
 class Agent(BaseModel):
     name: str = "Agent"
-    model: str = "gpt-4-0125-preview"
+    model: str = "gpt-4o-mini"
     instructions: str = "You are a helpful Agent"
     tools: list = []
 
@@ -167,7 +167,7 @@ bakery_agent = Agent(
     - Be friendly but efficient
     - If unsure about any request, clarify before proceeding
     """,
-    model="gpt-4-0125-preview",
+    model="gpt-4o-mini",
     tools=[get_cake_inventory, calculate_custom_cake_price, check_payment_status, 
            transfer_to_custom_order_agent, transfer_to_refund_agent, get_faq]
 )
@@ -198,7 +198,7 @@ refund_agent = Agent(
     - Refunds only possible within 24 hours of order for non-custom items
     - Custom orders are non-refundable once production begins
     """,
-    model="gpt-4-0125-preview",
+    model="gpt-4o-mini",
     tools=[execute_refund, transfer_to_bakery_agent, get_faq]
 )
 
@@ -238,6 +238,6 @@ custom_order_agent = Agent(
     - 72 hours minimum notice required
     - Payment required upfront
     """,
-    model="gpt-4-0125-preview",
+    model="gpt-4o-mini",
     tools=[calculate_custom_cake_price, check_payment_status, transfer_to_bakery_agent, transfer_to_refund_agent, get_faq]
 )

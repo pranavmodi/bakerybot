@@ -59,6 +59,7 @@ def run_full_turn(agent: Agent, messages: list[dict]) -> tuple[dict, Agent]:
 
         while True:
             # Get completion from OpenAI
+            print(f"Current agent: {current_agent.name}")
             full_messages = [{"role": "system", "content": current_agent.instructions}] + messages
             print_messages(full_messages)
             response = client.chat.completions.create(
