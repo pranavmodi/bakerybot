@@ -1,8 +1,10 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Form
+from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 from app.utils.tools import bakery_agent, Agent
 from app.utils.function_schemas import function_to_schema
 from dotenv import load_dotenv
+from app.config.settings import INPUT_FORMAT
 import os
 import json
 from typing import Any
@@ -135,23 +137,24 @@ async def chat(request: Request) -> dict:
         global current_agent
         
         print("\n=== Request received ===")
-        # Print raw request body
-        body = await request.body()
-        print("Raw request body:", body)
         
-        # Try to parse JSON and print
-        try:
-            data = await request.json()
-            print("Parsed JSON data:")
-            print(json.dumps(data, indent=2))
-        except json.JSONDecodeError as e:
-            print(f"Failed to parse JSON: {str(e)}")
-            raise HTTPException(status_code=400, detail="Invalid JSON payload")
-        
+        # Extract message based on configured input format
+        if INPUT_FORMAT == "form":
+            form_data = await request.form()
+            message = form_data.get('Body', '')
+            print("Form data received:", dict(form_data))
+        else:  # json format
+            try:
+                data = await request.json()
+                print("JSON data received:", json.dumps(data, indent=2))
+                message = data.get('message', '')
+            except json.JSONDecodeError as e:
+                print(f"Failed to parse JSON: {str(e)}")
+                raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+        print(f"Extracted message: {message}")
         print("==============================\n")
         
-        message = data.get('message', '')
-
         # Check for exit message
         if message.lower() in ['exit', 'quit', 'bye']:
             print("\n=== Conversation History ===")
