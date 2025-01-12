@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response, JSONResponse
 from openai import OpenAI
 from app.utils.tools import bakery_agent, Agent
 from app.utils.function_schemas import function_to_schema
@@ -126,12 +127,21 @@ def run_full_turn(agent: Agent, messages: list[dict]) -> tuple[dict, Agent]:
         print(f"Error in run_full_turn: {str(e)}")
         raise
 
+def create_twilio_response(message: str) -> str:
+    """Create a TwiML response for Twilio."""
+    # Escape any XML special characters in the message
+    message = message.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&apos;")
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+    <Message>{message}</Message>
+</Response>"""
+
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Bakery Chatbot API"}
 
 @app.post("/chat")
-async def chat(request: Request) -> dict:
+async def chat(request: Request) -> Response:
     try:
         global conversation_history
         global current_agent
@@ -151,7 +161,11 @@ async def chat(request: Request) -> dict:
                 logger.info(f"Form data received: {dict(form_data)}")
             except Exception as e:
                 logger.error(f"Error parsing form data: {str(e)}")
-                raise HTTPException(status_code=400, detail=f"Invalid form data: {str(e)}")
+                return Response(
+                    content=create_twilio_response(f"Error processing request: {str(e)}"),
+                    media_type="text/xml",
+                    status_code=400
+                )
         else:  # json format
             try:
                 data = await request.json()
@@ -162,48 +176,66 @@ async def chat(request: Request) -> dict:
                 raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {str(e)}")
 
         if not message:
-            logger.error("No message found in request")
-            raise HTTPException(status_code=400, detail="No message found in request")
+            error_msg = "No message found in request"
+            logger.error(error_msg)
+            if INPUT_FORMAT == "form":
+                return Response(
+                    content=create_twilio_response(error_msg),
+                    media_type="text/xml",
+                    status_code=400
+                )
+            raise HTTPException(status_code=400, detail=error_msg)
 
         logger.info(f"Extracted message: {message}")
         logger.info("==============================\n")
         
         # Check for exit message
         if message.lower() in ['exit', 'quit', 'bye']:
-            print("\n=== Conversation History ===")
-            for msg in conversation_history:
-                print(f"{msg['role'].capitalize()}: {msg['content']}")
-            print("==========================\n")
-            
             final_history = conversation_history.copy()
             conversation_history = []
             current_agent = bakery_agent  # Reset to bakery agent
+            response_text = "Goodbye! Conversation history has been cleared."
+        else:
+            conversation_history.append({
+                "role": "user", 
+                "content": message
+            })
             
-            return {
-                "response": "Goodbye! Conversation history has been cleared.",
-                "conversation_history": final_history
-            }
+            assistant_message, current_agent = run_full_turn(
+                current_agent,
+                conversation_history
+            )
+            
+            conversation_history.append(assistant_message)
+            response_text = assistant_message["content"]
 
-        conversation_history.append({
-            "role": "user", 
-            "content": message
-        })
-        
-        assistant_message, current_agent = run_full_turn(
-            current_agent,
-            conversation_history
-        )
-        
-        conversation_history.append(assistant_message)
-        
-        return {
-            "response": assistant_message["content"],
-            "conversation_history": conversation_history,
-            "current_agent": current_agent.name
-        }
+        # Return response based on input format
+        if INPUT_FORMAT == "form":
+            twiml_response = create_twilio_response(response_text)
+            return Response(
+                content=twiml_response,
+                media_type="text/xml",
+                headers={"Cache-Control": "no-cache"}
+            )
+        else:
+            return JSONResponse(content={
+                "response": response_text,
+                "conversation_history": conversation_history,
+                "current_agent": current_agent.name
+            })
+            
     except Exception as e:
         logger.error(f"Unexpected error in /chat endpoint: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") 
+        error_message = f"Internal server error: {str(e)}"
+        if INPUT_FORMAT == "form":
+            twiml_response = create_twilio_response(error_message)
+            return Response(
+                content=twiml_response,
+                media_type="text/xml",
+                status_code=500,
+                headers={"Cache-Control": "no-cache"}
+            )
+        raise HTTPException(status_code=500, detail=error_message)
 
 if __name__ == "__main__":
     import uvicorn
