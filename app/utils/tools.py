@@ -212,7 +212,7 @@ custom_order_agent = Agent(
        - First check get_faq for standard answers
        - If no matching FAQ found, provide appropriate information based on context
        - IMPORTANT: FAQ answers are the final authority on store policy and should never be contradicted
-    2. Collect requirements in a friendly conversation:
+    2. Collect requirements in a friendly conversation, one by one, not all at once:
        - Occasion
        - Cake size (number of people)
        - Number of tiers
