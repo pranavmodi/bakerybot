@@ -21,4 +21,4 @@ def chat_with_bot():
             print(f"Error: Could not connect to server. {str(e)}")
 
 if __name__ == "__main__":
-    chat_with_bot() 
+    chat_with_bot()
