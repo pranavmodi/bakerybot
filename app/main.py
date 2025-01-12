@@ -6,6 +6,14 @@ from dotenv import load_dotenv
 import os
 import json
 from typing import Any
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Load environment variables at the start of the application
 load_dotenv()
@@ -125,9 +133,21 @@ async def chat(request: Request) -> dict:
     try:
         global conversation_history
         global current_agent
-        data = await request.json()
-        print("\n=== Incoming Request Payload ===")
-        print(json.dumps(data, indent=2))
+        
+        print("\n=== Request received ===")
+        # Print raw request body
+        body = await request.body()
+        print("Raw request body:", body)
+        
+        # Try to parse JSON and print
+        try:
+            data = await request.json()
+            print("Parsed JSON data:")
+            print(json.dumps(data, indent=2))
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse JSON: {str(e)}")
+            raise HTTPException(status_code=400, detail="Invalid JSON payload")
+        
         print("==============================\n")
         
         message = data.get('message', '')
