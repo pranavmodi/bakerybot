@@ -136,24 +136,37 @@ async def chat(request: Request) -> dict:
         global conversation_history
         global current_agent
         
-        print("\n=== Request received ===")
+        logger.info("\n=== Request received ===")
+        
+        # Log raw request details
+        logger.info(f"Headers: {dict(request.headers)}")
+        body = await request.body()
+        logger.info(f"Raw body: {body}")
         
         # Extract message based on configured input format
         if INPUT_FORMAT == "form":
-            form_data = await request.form()
-            message = form_data.get('Body', '')
-            print("Form data received:", dict(form_data))
+            try:
+                form_data = await request.form()
+                message = form_data.get('Body', '')
+                logger.info(f"Form data received: {dict(form_data)}")
+            except Exception as e:
+                logger.error(f"Error parsing form data: {str(e)}")
+                raise HTTPException(status_code=400, detail=f"Invalid form data: {str(e)}")
         else:  # json format
             try:
                 data = await request.json()
-                print("JSON data received:", json.dumps(data, indent=2))
+                logger.info(f"JSON data received: {json.dumps(data, indent=2)}")
                 message = data.get('message', '')
             except json.JSONDecodeError as e:
-                print(f"Failed to parse JSON: {str(e)}")
-                raise HTTPException(status_code=400, detail="Invalid JSON payload")
+                logger.error(f"Failed to parse JSON: {str(e)}")
+                raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {str(e)}")
 
-        print(f"Extracted message: {message}")
-        print("==============================\n")
+        if not message:
+            logger.error("No message found in request")
+            raise HTTPException(status_code=400, detail="No message found in request")
+
+        logger.info(f"Extracted message: {message}")
+        logger.info("==============================\n")
         
         # Check for exit message
         if message.lower() in ['exit', 'quit', 'bye']:
@@ -189,7 +202,8 @@ async def chat(request: Request) -> dict:
             "current_agent": current_agent.name
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+        logger.error(f"Unexpected error in /chat endpoint: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") 
 
 if __name__ == "__main__":
     import uvicorn
