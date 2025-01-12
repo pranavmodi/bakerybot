@@ -126,6 +126,10 @@ async def chat(request: Request) -> dict:
         global conversation_history
         global current_agent
         data = await request.json()
+        print("\n=== Incoming Request Payload ===")
+        print(json.dumps(data, indent=2))
+        print("==============================\n")
+        
         message = data.get('message', '')
 
         # Check for exit message
@@ -166,4 +170,4 @@ async def chat(request: Request) -> dict:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=50000) 
+    uvicorn.run(app, host="0.0.0.0", port=50000)

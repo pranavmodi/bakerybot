@@ -1,5 +1,7 @@
 import requests
 
+SERVER_URL = "http://54.71.183.198:50000"
+
 def chat_with_bot():
     print("Welcome to the Bakery Chatbot! Type 'exit' to end the conversation.")
     
@@ -11,7 +13,7 @@ def chat_with_bot():
         
         try:
             response = requests.post(
-                'http://localhost:8000/chat',
+                f'{SERVER_URL}/chat',
                 json={'message': user_input}
             )
             response.raise_for_status()  # Raise an exception for bad status codes
