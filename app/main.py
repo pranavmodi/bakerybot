@@ -7,11 +7,13 @@ from app.utils.function_schemas import function_to_schema
 from app.services.chat_service import ChatService
 from app.services.response_service import ResponseService
 from app.utils.logging_config import setup_logging
+from app.models import Conversation, ConversationManager
 from dotenv import load_dotenv
 from app.config.settings import INPUT_FORMAT
 import os
 import json
-from typing import Any
+from typing import Any, List, Dict
+from datetime import datetime
 
 # Configure logging
 logger = setup_logging()
@@ -27,6 +29,7 @@ chat_service = ChatService(
     initial_agent=bakery_agent
 )
 response_service = ResponseService()
+conversation_manager = ConversationManager()
 
 @app.get("/")
 async def root():
@@ -42,19 +45,32 @@ async def chat(request: Request) -> Response:
         body = await request.body()
         logger.info(f"Raw body: {body}")
         
-        # Extract message based on configured input format
-        message = await response_service.extract_message(request)
+        # Parse request body
+        data = json.loads(body)
+        phone_number = data.get("phone_number")
+        if not phone_number:
+            error_msg = "No phone number provided in request"
+            logger.error(error_msg)
+            return response_service.create_error_response(error_msg)
         
+        # Extract message based on configured input format
+        message = data.get("message")
         if not message:
             error_msg = "No message found in request"
             logger.error(error_msg)
             return response_service.create_error_response(error_msg)
 
-        logger.info(f"Extracted message: {message}")
-        logger.info("==============================\n")
+        logger.info(f"Phone number: {phone_number}")
+        logger.info(f"Message: {message}")
         
-        # Process the message
-        response_text = await chat_service.process_message(message)
+        # Get or create conversation for this phone number
+        conversation = conversation_manager.get_conversation(phone_number)
+        
+        # Process the message with conversation context
+        response_text = await chat_service.process_message(message, conversation)
+        
+        # Cleanup old conversations
+        conversation_manager.cleanup_old_conversations()
         
         # Return response based on input format
         return response_service.create_response(response_text)

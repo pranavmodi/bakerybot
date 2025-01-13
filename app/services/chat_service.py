@@ -2,6 +2,7 @@ from typing import Dict, List, Any, Tuple
 from openai import OpenAI
 from app.utils.tools import Agent
 from app.utils.function_schemas import function_to_schema
+from app.models import Conversation
 import json
 import logging
 
@@ -12,7 +13,6 @@ class ChatService:
         self.client = openai_client
         self.initial_agent = initial_agent
         self.current_agent = initial_agent
-        self.conversation_history: List[Dict[str, Any]] = []
 
     def _print_messages(self, messages: List[Dict[str, Any]]) -> None:
         """Print messages in a readable format for debugging."""
@@ -32,7 +32,7 @@ class ChatService:
         print(f"{self.current_agent.name}:", f"{name}({args})")
         return tools[name](**args)
 
-    async def _run_full_turn(self, messages: List[Dict[str, Any]]) -> Tuple[Dict[str, Any], Agent]:
+    async def _run_full_turn(self, messages: List[Dict[str, Any]], conversation: Conversation) -> Tuple[Dict[str, Any], Agent]:
         """Run a complete conversation turn with OpenAI API."""
         messages = messages.copy()
         try:
@@ -96,18 +96,23 @@ class ChatService:
             logger.error(f"Error in run_full_turn: {str(e)}")
             raise
 
-    async def process_message(self, message: str) -> str:
+    async def process_message(self, message: str, conversation: Conversation) -> str:
         """Process a user message and return the response."""
         if message.lower() in ['exit', 'quit', 'bye']:
-            self.conversation_history = []
+            conversation.history = []
             self.current_agent = self.initial_agent
             return "Goodbye! Conversation history has been cleared."
 
-        self.conversation_history.append({
+        # Add user message to conversation history
+        conversation.history.append({
             "role": "user",
             "content": message
         })
 
-        assistant_message, _ = await self._run_full_turn(self.conversation_history)
-        self.conversation_history.append(assistant_message)
+        # Run the full turn with tools and agent switching
+        assistant_message, _ = await self._run_full_turn(conversation.history, conversation)
+        
+        # Add assistant response to conversation history
+        conversation.history.append(assistant_message)
+        
         return assistant_message["content"] 
