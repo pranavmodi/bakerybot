@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from app.config.settings import INPUT_FORMAT
 import os
 import json
+import argparse
 from typing import Any, List, Dict
 from datetime import datetime
 
@@ -20,6 +21,11 @@ logger = setup_logging()
 
 # Load environment variables at the start of the application
 load_dotenv()
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Bakery Chatbot API')
+    parser.add_argument('--port', type=int, default=8000, help='Port to run the server on')
+    return parser.parse_args()
 
 app = FastAPI(title="Bakery Chatbot API")
 
@@ -78,3 +84,8 @@ async def chat(request: Request) -> Response:
     except Exception as e:
         logger.error(f"Unexpected error in /chat endpoint: {str(e)}", exc_info=True)
         return response_service.create_error_response(f"Internal server error: {str(e)}")
+
+if __name__ == "__main__":
+    import uvicorn
+    args = parse_args()
+    uvicorn.run(app, host="0.0.0.0", port=args.port)
