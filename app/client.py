@@ -1,6 +1,7 @@
 import requests
 
-SERVER_URL = "http://54.71.183.198:50000"
+# SERVER_URL = "http://54.71.183.198:50000"
+SERVER_URL = "http://localhost:8000"
 
 def chat_with_bot():
     print("Welcome to the Bakery Chatbot! Type 'exit' to end the conversation.")
