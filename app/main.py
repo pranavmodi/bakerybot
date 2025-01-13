@@ -48,19 +48,20 @@ async def chat(request: Request) -> Response:
         
         # Log raw request details
         logger.info(f"Headers: {dict(request.headers)}")
-        body = await request.body()
-        logger.info(f"Raw body: {body}")
         
-        # Parse request body
-        data = json.loads(body)
-        phone_number = data.get("phone_number")
+        # Parse form data from Twilio
+        form_data = await request.form()
+        logger.info(f"Form data: {dict(form_data)}")
+        
+        # Extract phone number from the From field (format: whatsapp:+1234567890)
+        phone_number = form_data.get("From", "").replace("whatsapp:", "")
         if not phone_number:
             error_msg = "No phone number provided in request"
             logger.error(error_msg)
             return response_service.create_error_response(error_msg)
         
-        # Extract message based on configured input format
-        message = data.get("message")
+        # Extract message from the Body field
+        message = form_data.get("Body")
         if not message:
             error_msg = "No message found in request"
             logger.error(error_msg)
