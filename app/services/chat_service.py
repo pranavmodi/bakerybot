@@ -1,6 +1,6 @@
 from typing import Dict, List, Any, Tuple
 from openai import OpenAI
-from app.utils.tools import Agent
+from app.utils.tools.agents import Agent
 from app.utils.function_schemas import function_to_schema
 from app.models import Conversation
 import json

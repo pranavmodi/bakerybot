@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 from openai import OpenAI
-from app.utils.tools import bakery_agent, Agent
+from app.utils.tools.agents import bakery_agent, Agent
 from app.utils.function_schemas import function_to_schema
 from app.services.chat_service import ChatService
 from app.services.response_service import ResponseService
