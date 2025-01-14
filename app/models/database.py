@@ -14,6 +14,24 @@ class OrderStatus(enum.Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
+class Product(Base):
+    __tablename__ = "products"
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    price = Column(Float, nullable=False)
+    description = Column(Text)
+    quantity = Column(Integer, default=0)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "price": self.price,
+            "description": self.description,
+            "quantity": self.quantity
+        }
+
 class Customer(Base):
     __tablename__ = "customers"
     
@@ -35,9 +53,29 @@ class Order(Base):
     payment_status = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
     pickup_time = Column(DateTime)
+    summary = Column(Text)  # Store a brief summary/overview of the order
     
     customer = relationship("Customer", back_populates="orders")
     details = relationship("OrderDetail", back_populates="order")
+
+    def to_dict(self) -> dict:
+        """Convert Order object to dictionary.
+        
+        Returns:
+            dict: Dictionary containing order details
+        """
+        return {
+            "id": self.id,
+            "customer_id": self.customer_id,
+            "type": self.type,
+            "status": self.status.value if self.status else None,
+            "total_amount": self.total_amount,
+            "payment_status": self.payment_status,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "pickup_time": self.pickup_time.isoformat() if self.pickup_time else None,
+            "summary": self.summary,
+            "details": [detail.to_dict() for detail in self.details] if self.details else []
+        }
 
 class OrderDetail(Base):
     __tablename__ = "order_details"
@@ -55,6 +93,26 @@ class OrderDetail(Base):
     special_instructions = Column(Text)
     
     order = relationship("Order", back_populates="details")
+
+    def to_dict(self) -> dict:
+        """Convert OrderDetail object to dictionary.
+        
+        Returns:
+            dict: Dictionary containing order detail information
+        """
+        return {
+            "id": self.id,
+            "order_id": self.order_id,
+            "cake_name": self.cake_name,
+            "size": self.size,
+            "tiers": self.tiers,
+            "flavor": self.flavor,
+            "filling": self.filling,
+            "frosting": self.frosting,
+            "dietary_restrictions": self.dietary_restrictions,
+            "message": self.message,
+            "special_instructions": self.special_instructions
+        }
 
 class ChatHistory(Base):
     __tablename__ = "chat_history"

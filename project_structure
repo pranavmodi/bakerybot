@@ -1,16 +1,43 @@
 bakery-chatbot/
+├── alembic/                    # Database migrations
 ├── app/
 │   ├── __init__.py
-│   ├── main.py
+│   ├── main.py                 # FastAPI application entry point
 │   ├── database/
+│   │   └── __init__.py
+│   ├── models/
 │   │   ├── __init__.py
-│   │   └── models.py
+│   │   ├── conversation.py    # Conversation models
+│   │   ├── database.py       # SQLAlchemy database models
+│   │   └── routine.py         # Routine models
 │   ├── services/
 │   │   ├── __init__.py
-│   │   └── chatbot.py
+│   │   ├── chat_service.py    # Chat handling logic
+│   │   └── db_service.py      # Database operations
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── db_analytics.py    # Database analytics utilities
+│   │   └── tools/            # Tool implementations
+│   │       ├── __init__.py
+│   │       ├── admin.py      # Admin tools
+│   │       ├── agents.py     # Agent-related tools
+│   │       ├── inventory.py  # Inventory management tools
+│   │       ├── customer.py   # Customer interaction tools
+│   │       └── payment.py    # Payment processing tools
 │   └── config/
 │       ├── __init__.py
-│       └── settings.py
-├── requirements.txt
-├── .env
-└── README.md 
+│       └── settings.py       # Configuration settings
+├── data/
+│   └── bakeryroutines.txt    # Routine definitions
+├── scripts/
+│   └── setup_db.sh          # Database setup script
+├── tests/                   # Test directory
+│   ├── __init__.py
+│   ├── test_chat.py
+│   └── test_routines.py
+├── requirements.txt         # Python dependencies
+├── alembic.ini             # Alembic configuration
+├── .env                    # Environment variables
+├── .env.example           # Example environment variables
+├── .gitignore            # Git ignore rules
+└── README.md             # Project documentation 

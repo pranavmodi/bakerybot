@@ -1,4 +1,41 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Union
+from datetime import datetime
+from sqlalchemy.orm import Session
+from app.models.database import Order, Customer
+from app.database import get_db
+
+def get_customer_orders(customer_id: int) -> List[Dict[str, Union[str, float, datetime]]]:
+    """
+    Get all orders for a specific customer from the database.
+    
+    Args:
+        customer_id: The ID of the customer
+        
+    Returns:
+        List of orders, each containing:
+        - order_id: The ID of the order
+        - status: Order status (pending, confirmed, etc)
+        - payment_status: Payment status
+        - amount: Total amount
+        - created_at: When order was created
+        - pickup_time: Scheduled pickup time
+        - summary: Order summary
+    """
+    db = next(get_db())
+    try:
+        orders = db.query(Order).filter(Order.customer_id == customer_id).order_by(Order.created_at.desc()).all()
+        
+        return [{
+            'order_id': order.id,
+            'status': order.status.value,
+            'payment_status': order.payment_status,
+            'amount': order.total_amount,
+            'created_at': order.created_at,
+            'pickup_time': order.pickup_time,
+            'summary': order.summary
+        } for order in orders]
+    finally:
+        db.close()
 
 def get_faq() -> List[Dict[str, str]]:
     """

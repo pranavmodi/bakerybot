@@ -14,3 +14,7 @@ The notion of a "routine" is meant to capture the idea of a set of steps. Concre
 
 
 start every response with a greeting "hey mofo"
+
+check the project_structure file to see the structure of the repo. Keep this up to date.
+
+when defining tools, always add a detailed docstring to the function and expected arguments.
