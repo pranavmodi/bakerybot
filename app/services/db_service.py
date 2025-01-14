@@ -30,6 +30,14 @@ class DatabaseService:
             self.db.refresh(customer)
         return customer
 
+    def update_customer_name(self, customer_id: int, name: str) -> Optional[Customer]:
+        customer = self.db.query(Customer).filter(Customer.id == customer_id).first()
+        if customer:
+            customer.name = name
+            self.db.commit()
+            self.db.refresh(customer)
+        return customer
+
     # Order operations
     def create_order(self, 
                     customer_id: int, 

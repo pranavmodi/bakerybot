@@ -43,7 +43,8 @@ class ChatService:
             while True:
                 # Get completion from OpenAI
                 print(f"Current agent: {self.current_agent.name}")
-                full_messages = [{"role": "system", "content": self.current_agent.instructions}] + messages
+                system_message = f"{self.current_agent.instructions}\n\nCustomer phone number: {conversation.phone_number}"
+                full_messages = [{"role": "system", "content": system_message}] + messages
                 self._print_messages(full_messages)
                 
                 response = self.client.chat.completions.create(
