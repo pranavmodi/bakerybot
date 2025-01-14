@@ -1,8 +1,8 @@
 import requests
 import xml.etree.ElementTree as ET
 
-SERVER_URL = "http://54.71.183.198:50000"
-# SERVER_URL = "http://localhost:8000"
+# SERVER_URL = "http://54.71.183.198:50000"
+SERVER_URL = "http://localhost:8000"
 
 def parse_twilio_response(xml_text: str) -> str:
     root = ET.fromstring(xml_text)

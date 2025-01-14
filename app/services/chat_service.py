@@ -99,20 +99,17 @@ class ChatService:
     async def process_message(self, message: str, conversation: Conversation) -> str:
         """Process a user message and return the response."""
         if message.lower() in ['exit', 'quit', 'bye']:
-            conversation.history = []
+            conversation.clear()
             self.current_agent = self.initial_agent
             return "Goodbye! Conversation history has been cleared."
 
         # Add user message to conversation history
-        conversation.history.append({
-            "role": "user",
-            "content": message
-        })
+        conversation.add_message("user", message)
 
         # Run the full turn with tools and agent switching
-        assistant_message, _ = await self._run_full_turn(conversation.history, conversation)
+        assistant_message, _ = await self._run_full_turn(conversation.get_messages(), conversation)
         
         # Add assistant response to conversation history
-        conversation.history.append(assistant_message)
+        conversation.add_message("assistant", assistant_message["content"])
         
         return assistant_message["content"] 

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, Form
+from fastapi import FastAPI, HTTPException, Request, Form, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 from openai import OpenAI
@@ -6,10 +6,13 @@ from app.utils.tools import bakery_agent, Agent
 from app.utils.function_schemas import function_to_schema
 from app.services.chat_service import ChatService
 from app.services.response_service import ResponseService
+from app.services.db_service import DatabaseService
 from app.utils.logging_config import setup_logging
 from app.models import Conversation, ConversationManager
+from app.database import get_db, init_db
 from dotenv import load_dotenv
 from app.config.settings import INPUT_FORMAT
+from sqlalchemy.orm import Session
 import os
 import json
 import argparse
@@ -34,17 +37,28 @@ chat_service = ChatService(
     openai_client=OpenAI(api_key=os.getenv("OPENAI_API_KEY")),
     initial_agent=bakery_agent
 )
+
 response_service = ResponseService()
 conversation_manager = ConversationManager()
+
+@app.on_event("startup")
+async def startup_event():
+    init_db()
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Bakery Chatbot API"}
 
 @app.post("/chat")
-async def chat(request: Request) -> Response:
+async def chat(
+    request: Request,
+    db: Session = Depends(get_db)
+) -> Response:
     try:
         logger.info("\n=== Request received ===")
+        
+        # Initialize database service
+        db_service = DatabaseService(db)
         
         # Log raw request details
         logger.info(f"Headers: {dict(request.headers)}")
@@ -70,11 +84,24 @@ async def chat(request: Request) -> Response:
         logger.info(f"Phone number: {phone_number}")
         logger.info(f"Message: {message}")
         
+        # Get or create customer
+        customer = db_service.get_customer_by_phone(phone_number)
+        if not customer:
+            customer = db_service.create_customer(phone_number)
+        
         # Get or create conversation for this phone number
         conversation = conversation_manager.get_conversation(phone_number)
         
         # Process the message with conversation context
         response_text = await chat_service.process_message(message, conversation)
+        
+        # Store chat history
+        db_service.add_chat_history(
+            customer_id=customer.id,
+            user_message=message,
+            bot_response=response_text,
+            context=conversation.context
+        )
         
         # Cleanup old conversations
         conversation_manager.cleanup_old_conversations()
