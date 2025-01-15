@@ -33,9 +33,13 @@ ENV/
 # Environment variables
 .env
 
+# macOS system files
+.DS_Store
+**/.DS_Store
+
 # Keep these files
 !app/faq.txt
 !app/bakeryroutine.txt
 
-
+# Project specific
 mybot/
