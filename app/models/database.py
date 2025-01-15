@@ -22,6 +22,7 @@ class Product(Base):
     price = Column(Float, nullable=False)
     description = Column(Text)
     quantity = Column(Integer, default=0)
+    image = Column(String, nullable=True)  # URL or path to the image
     
     def to_dict(self):
         return {
@@ -29,7 +30,8 @@ class Product(Base):
             "name": self.name,
             "price": self.price,
             "description": self.description,
-            "quantity": self.quantity
+            "quantity": self.quantity,
+            "image": self.image
         }
 
 class Customer(Base):

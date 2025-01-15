@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 from app.utils.tools import admin, customer, inventory, payment
+from app.utils.tools.gdrive import print_inventory, load_product_inventory
 
 # Load environment variables
 load_dotenv()
@@ -269,6 +270,11 @@ ADMIN_AGENT = Agent(
     - Remove products from inventory
     - View customer order history
     - Generate daily sales reports
+    - Load and view inventory from Google Sheets:
+        * View inventory from a Google Sheet using print_inventory
+        * Load inventory data from a Google Sheet using load_product_inventory
+        * For public sheets, no authentication is needed
+        * For private sheets, use require_auth=True
     
     Transfer conditions:
     - After 3 failed password attempts: Transfer back to original agent
@@ -277,7 +283,27 @@ ADMIN_AGENT = Agent(
     - If user needs order help: Transfer to order agent
     - If user needs refund help: Transfer to refund agent
     
-    Guidelines:
+    Guidelines for Google Sheets:
+    - When user provides a sheet URL:
+        1. First try without authentication (require_auth=False)
+        2. If that fails, inform user and suggest trying with authentication
+        3. If user wants to try with auth, use require_auth=True
+    - Sheet format requirements:
+        * Required columns: name, price, description, quantity
+        * Optional columns: image
+        * First row must be headers
+        * Price must be a valid number
+        * Quantity must be a valid integer
+    - Always provide feedback about:
+        * Number of products loaded
+        * Any validation errors
+        * Any rows skipped
+    - If sheet reading fails:
+        1. Explain the specific error
+        2. Suggest possible solutions
+        3. Offer to try again with different parameters
+    
+    General Guidelines:
     - Always verify authentication before executing any command
     - Keep sensitive information secure
     - Log all administrative actions
@@ -290,6 +316,7 @@ ADMIN_AGENT = Agent(
         verify_admin_password,
         view_all_orders, update_product_price, add_new_product,
         remove_product, view_customer_history, get_daily_sales_report,
+        print_inventory, load_product_inventory,
         transfer_to_bakery_agent, transfer_to_custom_order_agent, 
         transfer_to_refund_agent
     ]
