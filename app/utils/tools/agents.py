@@ -25,44 +25,38 @@ from app.utils.tools.admin import (
     verify_admin_password
 )
 
-# Define transfer functions first
-def transfer_to_custom_order_agent() -> Agent:
-    """Transfer the conversation to the custom order specialist agent.
-    This function does not accept any arguments.
-    
-    Returns:
-        Agent: The ORDER_AGENT instance
-    """
-    return ORDER_AGENT
+# Pre-declare agents for type hints
+BAKERY_AGENT: Agent = None
+ORDER_AGENT: Agent = None
+REFUND_AGENT: Agent = None
+ADMIN_AGENT: Agent = None
 
-def transfer_to_bakery_agent() -> Agent:
-    """Transfer the conversation to the general bakery agent.
-    This function does not accept any arguments.
-    
-    Returns:
-        Agent: The BAKERY_AGENT instance
-    """
-    return BAKERY_AGENT
+# Define AGENTS dictionary and transfer function
+AGENTS = {
+    "bakery": lambda: BAKERY_AGENT,
+    "order": lambda: ORDER_AGENT,
+    "refund": lambda: REFUND_AGENT,
+    "admin": lambda: ADMIN_AGENT,
+}
 
-def transfer_to_refund_agent() -> Agent:
-    """Transfer the conversation to the refund specialist agent.
-    This function does not accept any arguments.
-    
-    Returns:
-        Agent: The REFUND_AGENT instance
+def transfer_to(agent_name: str) -> Agent:
     """
-    return REFUND_AGENT
+    Transfer the conversation to the specified agent.
 
-def transfer_to_admin_agent() -> Agent:
-    """Transfer the conversation to the admin agent.
-    This function does not accept any arguments.
-    
+    Args:
+        agent_name (str): Name of the agent to transfer to. Must be one of: 'bakery', 'order', 'refund', 'admin'
+
     Returns:
-        Agent: The ADMIN_AGENT instance
-    """
-    return ADMIN_AGENT
+        Agent: The corresponding agent instance
 
-# Then define agents with transfer functions in their tools
+    Raises:
+        ValueError: If agent_name is not recognized
+    """
+    if agent_name not in AGENTS:
+        raise ValueError(f"Unknown agent: {agent_name}. Must be one of: {', '.join(AGENTS.keys())}")
+    return AGENTS[agent_name]()
+
+# Now define the agents
 BAKERY_AGENT = Agent(
     name="BakeryBot",
     instructions="""You are a friendly customer service agent for Chocolate Therapy Bakery.
@@ -97,17 +91,17 @@ BAKERY_AGENT = Agent(
               - Inform customer and offer to try again
     6. For custom cake orders:
        - Say "Transferring you to our custom order specialist"
-       - Use transfer_to_custom_order_agent
+       - Use transfer_to('order') to switch to the custom order specialist
     7. If customer mentions refund or cancellation:
        - Say "Let me connect you with our refund specialist"
-       - Use transfer_to_refund_agent
+       - Use transfer_to('refund') to switch to the refund specialist
     8. For payment status inquiries:
        - Check status using check_payment_status
        - If payment failed, provide retry options
        - If payment successful, update status and confirm order
     9. IMPORTANT - If customer mentions becoming admin, accessing admin interface, or admin access:
        - First say "Let me connect you with our admin interface"
-       - Then you MUST call transfer_to_admin_agent() function
+       - Then use transfer_to('admin') to switch to the admin interface
        - Do not try to handle admin tasks yourself
        - Do not ask for password - the admin agent will handle authentication
 
@@ -119,12 +113,12 @@ BAKERY_AGENT = Agent(
     - Always be attentive to name mentions in conversation
     - NEVER ask for phone number - it's provided in the system message
     - Monitor payment status and update accordingly
-    - For admin requests, always use transfer_to_admin_agent() function
+    - For admin requests, always use transfer_to('admin')
     """,
     model="gpt-4o-mini",
     tools=[get_cake_inventory, calculate_custom_cake_price, check_payment_status, update_payment_status,
            execute_payment, create_order, get_faq, update_customer_name, get_customer_by_phone, get_customer_orders,
-           transfer_to_custom_order_agent, transfer_to_refund_agent, transfer_to_admin_agent]
+           transfer_to]
 )
 
 ORDER_AGENT = Agent(
@@ -171,11 +165,11 @@ ORDER_AGENT = Agent(
           - Inform customer and offer to try again
     
     If at any point:
-    - Customer mentions refund: Hand over to refund_agent
-    - Customer wants regular cake: Hand over to bakery_agent
+    - Customer wants regular cake: Use transfer_to('bakery') to switch to bakery agent
+    - Customer mentions refund: Use transfer_to('refund') to switch to refund specialist
     - IMPORTANT - If customer mentions becoming admin, accessing admin interface, or admin access:
        - First say "Let me connect you with our admin interface"
-       - Then you MUST call transfer_to_admin_agent() function
+       - Then use transfer_to('admin') to switch to the admin interface
        - Do not try to handle admin tasks yourself
        - Do not ask for password - the admin agent will handle authentication
     - Payment fails: Provide retry options and guidance
@@ -189,12 +183,11 @@ ORDER_AGENT = Agent(
     - Always be attentive to name mentions in conversation
     - NEVER ask for phone number - it's provided in the system message
     - Monitor payment status and update accordingly
-    - For admin requests, always use transfer_to_admin_agent() function
+    - For admin requests, always use transfer_to('admin')
     """,
     model="gpt-4o-mini",
     tools=[calculate_custom_cake_price, check_payment_status, update_payment_status, execute_payment, create_order, get_faq, 
-           update_customer_name, get_customer_by_phone, transfer_to_bakery_agent, transfer_to_refund_agent, 
-           transfer_to_admin_agent]
+           update_customer_name, get_customer_by_phone, transfer_to]
 )
 
 REFUND_AGENT = Agent(
@@ -222,10 +215,11 @@ REFUND_AGENT = Agent(
        - Explain why clearly
        - Provide alternatives if applicable
     7. If customer wants to place a new order:
-       - Hand over to bakery_agent with message: "Let me connect you with our order specialist"
+       - Say "Let me connect you with our order specialist"
+       - Use transfer_to('bakery') to switch to bakery agent
     8. IMPORTANT - If customer mentions becoming admin, accessing admin interface, or admin access:
        - First say "Let me connect you with our admin interface"
-       - Then you MUST call transfer_to_admin_agent() function
+       - Then use transfer_to('admin') to switch to the admin interface
        - Do not try to handle admin tasks yourself
        - Do not ask for password - the admin agent will handle authentication
 
@@ -236,11 +230,11 @@ REFUND_AGENT = Agent(
     - Custom orders are non-refundable once production begins
     - Always verify payment status before processing refund
     - Update payment status after successful refund
-    - For admin requests, always use transfer_to_admin_agent() function
+    - For admin requests, always use transfer_to('admin')
     """,
     model="gpt-4o-mini",
     tools=[check_payment_status, execute_refund, update_payment_status, get_faq,
-           transfer_to_bakery_agent, transfer_to_admin_agent]
+           transfer_to]
 )
 
 ADMIN_AGENT = Agent(
@@ -260,7 +254,7 @@ ADMIN_AGENT = Agent(
     4. If password is incorrect:
        * Increment attempt counter
        * If attempts < 3: respond "Invalid password. Please provide the correct admin password. {3-attempts} attempts remaining."
-       * If attempts >= 3: say "Too many failed attempts. Transferring back to previous agent." and transfer back to original agent
+       * If attempts >= 3: say "Too many failed attempts. Transferring back to bakery agent." and use transfer_to('bakery')
     5. If password is correct, respond: "Admin access granted. How can I help you today?"
     
     Once authenticated, you can:
@@ -277,11 +271,11 @@ ADMIN_AGENT = Agent(
         * For private sheets, use require_auth=True
     
     Transfer conditions:
-    - After 3 failed password attempts: Transfer back to original agent
-    - If user mentions "done", "complete", "finished", or "exit": Say "Admin tasks completed. Transferring back to previous agent." and transfer to original agent
-    - If user needs customer service: Transfer to bakery agent
-    - If user needs order help: Transfer to order agent
-    - If user needs refund help: Transfer to refund agent
+    - After 3 failed password attempts: Use transfer_to('bakery')
+    - If user mentions "done", "complete", "finished", or "exit": Say "Admin tasks completed. Transferring back to bakery agent." and use transfer_to('bakery')
+    - If user needs customer service: Use transfer_to('bakery')
+    - If user needs order help: Use transfer_to('order')
+    - If user needs refund help: Use transfer_to('refund')
     
     Guidelines for Google Sheets:
     - When user provides a sheet URL:
@@ -309,7 +303,6 @@ ADMIN_AGENT = Agent(
     - Log all administrative actions
     - Provide clear error messages
     - Format currency values in USD
-    - Remember which agent transferred to admin to transfer back correctly
     """,
     model="gpt-4o-mini",
     tools=[
@@ -317,10 +310,15 @@ ADMIN_AGENT = Agent(
         view_all_orders, update_product_price, add_new_product,
         remove_product, view_customer_history, get_daily_sales_report,
         print_inventory, load_product_inventory,
-        transfer_to_bakery_agent, transfer_to_custom_order_agent, 
-        transfer_to_refund_agent
+        transfer_to
     ]
 )
+
+# Aliases for backward compatibility
+# transfer_to_bakery_agent = lambda: transfer_to('bakery')
+# transfer_to_custom_order_agent = lambda: transfer_to('order')
+# transfer_to_refund_agent = lambda: transfer_to('refund')
+# transfer_to_admin_agent = lambda: transfer_to('admin')
 
 # Aliases for backward compatibility
 bakery_agent = BAKERY_AGENT

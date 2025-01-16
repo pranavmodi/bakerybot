@@ -3,9 +3,7 @@ from app.utils.tools.payment import check_payment_status, execute_refund, update
 from app.utils.tools.customer import get_faq, update_customer_name, get_customer_by_phone
 from app.utils.tools.agents import (
     Agent,
-    transfer_to_custom_order_agent,
-    transfer_to_bakery_agent,
-    transfer_to_refund_agent,
+    transfer_to,
     bakery_agent
 )
 
@@ -19,8 +17,6 @@ __all__ = [
     'update_customer_name',
     'get_customer_by_phone',
     'Agent',
-    'transfer_to_custom_order_agent',
-    'transfer_to_bakery_agent',
-    'transfer_to_refund_agent',
+    'transfer_to',
     'bakery_agent'
 ] 
