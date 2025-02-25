@@ -1,8 +1,9 @@
 from typing import Dict, Union, Optional
 from datetime import datetime
+import random
 from sqlalchemy.orm import Session
-from app.database import SessionLocal
-from app.models.database import Order
+from app.database import SessionLocal, get_db
+from app.models.database import Order, OrderStatus
 
 def create_order(customer_id: int, order_type: str, total_amount: float, pickup_time: Union[datetime, str, None] = None) -> Dict[str, Union[int, str]]:
     """
